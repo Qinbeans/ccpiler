@@ -17,3 +17,6 @@ You can test whether the script works or not via this command:
 ```bash
 python ./scripts/cctweaked2json.py -t
 ```
+
+## Credits
+Inspired by [ccblockly](https://github.com/Mirka1405/ccblockly)
