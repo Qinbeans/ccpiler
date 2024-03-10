@@ -109,11 +109,12 @@ def test_extract_functions():
         soup = bs4.BeautifulSoup(f, "html.parser")
         extract_functions(soup, "Globals", "textutils")
 
-def data_to_blockly():
+def data_to_blockly(pretty: bool = False):
     blockly = {}
     for category in data["categories"]:
-        blockly[category] = []
+        blockly[category] = {}
         for library in data["categories"][category]:
+            blockly[category][library] = []
             for function in data["categories"][category][library]["functions"]:
                 tooltip = f"{library}.{function}"
                 block = {
@@ -139,18 +140,19 @@ def data_to_blockly():
                         block["output"] = "String"
                     else:
                         block["output"] = "Any"
-                if len(data["categories"][category][library]["functions"][function]["returns"]) == 0:
-                    block["previousStatement"] = None
-                    block["nextStatement"] = None
-                blockly[category].append(block)
-
+                block["previousStatement"] = None
+                block["nextStatement"] = None
+                blockly[category][library].append(block)
     with open("blockly.json", "w") as f:
-        json.dump(blockly, f, indent=4)
+        if pretty:
+            json.dump(blockly, f, indent=4)
+        else:
+            json.dump(blockly, f)
 
-def test_data_to_blockly():
-    data_to_blockly()
+def test_data_to_blockly(pretty: bool = False):
+    data_to_blockly(pretty)
 
-def main(categories: list = []):
+def main(categories: list = [], pretty: bool = False):
     request = requests.get(CCTWEAK_URL)
     soup = bs4.BeautifulSoup(request.text, "html.parser")
     extract_navbar(soup)
@@ -171,7 +173,7 @@ def main(categories: list = []):
             extract_functions(soup, category, library)
             print(f"\t[{COLORS['GREEN']}Done{COLORS['CLEAR']}]")
         print(f"[{COLORS['GREEN']}Done{COLORS['CLEAR']}]")
-    data_to_blockly()
+    data_to_blockly(pretty)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Converts the ComputerCraft Tweaked documentation to a JSON file")
@@ -179,6 +181,7 @@ def parse_args():
     parser.add_argument("-t", "--test", help="Run the tests", action="store_true")
     # which categories to extract
     parser.add_argument("-c", "--categories", help="The categories to extract", nargs="+", default=[])
+    parser.add_argument("-p", "--pretty", help="Pretty print the output", action="store_true")
     return parser.parse_args()
 
 if __name__ == "__main__":
@@ -186,8 +189,12 @@ if __name__ == "__main__":
     if args.test:
         test_extract_navbar()
         test_extract_functions()
-        test_data_to_blockly()
+        test_data_to_blockly(args.pretty)
     else:
-        main(args.categories)
+        main(args.categories, args.pretty)
+    
     with open(args.output, "w") as f:
-        json.dump(data, f, indent=4)
+        if args.pretty:
+            json.dump(data, f, indent=4)
+        else:
+            json.dump(data, f)

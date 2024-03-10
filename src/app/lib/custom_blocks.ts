@@ -63,41 +63,63 @@ TOOLBOX_CONFIG.contents.push({
 // FUNCTIONS is of type { [key: string]: any }
 for (const categoryKey in FUNCTIONS) {
     let lastColor = 0
-    const category = FUNCTIONS[categoryKey]
-    const blocks = []
-    for (const blockData of category) {
-        if (!blockData) continue
-        Blocky.Blocks[blockData.tooltip] = {
-            init: function() {
-                try {
-                    this.jsonInit(blockData)
-                } catch (e) {
-                    console.error(e, blockData)
+    const majorCategory = FUNCTIONS[categoryKey]
+    const libraries = []
+    for (const library in majorCategory) {
+        const libraryData = FUNCTIONS[categoryKey][library]
+        const blocks = []
+        if (libraryData.length == 0) continue
+        for (const blockData of libraryData) {
+            if (!blockData) continue
+            Blocky.Blocks[blockData.tooltip] = {
+                init: function() {
+                    try {
+                        this.jsonInit(blockData)
+                    } catch (e) {
+                        console.error(e, blockData)
+                    }
                 }
             }
-        }
-        luaGenerator.forBlock[blockData.tooltip] = function(block: any, generator: any) {
-            const name = blockData.tooltip
-            let code = name+"("
-            for (const el in blockData) {
-                if (el.search("arg") == -1) continue
-                const arg = blockData[el][0]
-                const value = generator.valueToCode(block, arg.name, generator.ORDER_NONE)
-                code += value+", "
+            luaGenerator.forBlock[blockData.tooltip] = function(block: any, generator: any) {
+                const name = blockData.tooltip
+                let code = name+"("
+                let args = 0
+                for (const el in blockData) {
+                    if (el.search("arg") == -1) continue
+                    const arg = blockData[el][0]
+                    if (arg.type == "input_statement") {
+                        const value = generator.statementToCode(block, arg.name)
+                        // lambda function
+                        code += "(function()\n"+value+"end), "
+                        continue
+                    }
+                    const value = generator.valueToCode(block, arg.name, generator.ORDER_NONE)
+                    code += value+", "
+                    args++
+                }
+                if (args > 0)
+                    code = code.slice(0, -2)
+                code += ")"
+                if (blockData.output) {
+                    return [code, Order.ATOMIC]
+                }
+                return code
             }
-            code = code.slice(0, -2) + ")"
-            if (blockData.output) {
-                return [code, Order.ATOMIC]
-            }
-            return code
+            blocks.push({"kind": "block", "type": blockData.tooltip})
+            lastColor = blockData.colour
         }
-        blocks.push({"kind": "block", "type": blockData.tooltip})
-        lastColor = blockData.colour
+        libraries.push({
+            "kind": "category",
+            "name": library,
+            "colour": lastColor,
+            "contents": blocks
+        })
     }
+    if (libraries.length == 0) continue
     TOOLBOX_CONFIG.contents.push({
         "kind": "category",
         "name": categoryKey,
-        "contents": blocks,
+        "contents": libraries,
         "colour": lastColor
     })
 }
