@@ -19,8 +19,8 @@ You can test whether the script works or not via this command:
 ```bash
 python ./scripts/cctweaked2json.py -t
 ```
-<img src="https://raw.githubusercontent.com/Qinbeans/ccpiler/main/docs/script_run.png" alt="script_run" height="75%" width="75%">
 
+<img src="https://raw.githubusercontent.com/Qinbeans/ccpiler/main/docs/script_run.png" alt="script_run" height="25%" width="25%">
 
 ## Credits
 Inspired by [ccblockly](https://github.com/Mirka1405/ccblockly)
