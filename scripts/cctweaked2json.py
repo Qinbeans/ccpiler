@@ -95,12 +95,8 @@ def extract_functions(soup: bs4.BeautifulSoup, category: str, library: str):
                     parameters.append({"name": p_name, "type": p_type})
         if len(rets) > 1:
             # place 2 dummy values to indicate that this function returns an array
-            returns.append("array")
-            returns.append("array")
+            returns.append("optional/multiple")
         elif len(rets) > 0:
-            # if rets[0] contains { and } then it's a table to which we set returns to multiple "arrays"
-            if "{" in rets[0].text and "}" in rets[0].text:
-                returns.append("array")
             lis = rets[0].find_all("li")
             for li in lis:
                 _type = li.find("span", class_="type")
@@ -143,13 +139,25 @@ def data_to_blockly(pretty: bool = False, output: str = "blockly.json"):
                         block[f"args{i+1}"] = [{"type": "input_value", "name": parameter["name"], "check": "String"}]
                     else:
                         block[f"args{i+1}"] = [{"type": "input_value", "name": parameter["name"]}]
-                if len(data["categories"][category][library]["functions"][function]["returns"]) > 1:
-                    block["output"] = "Array"
-                elif len(data["categories"][category][library]["functions"][function]["returns"]) == 1:
-                    if data["categories"][category][library]["functions"][function]["returns"][0] == "number":
+                if len(data["categories"][category][library]["functions"][function]["returns"]) == 1:
+                    if "number" in data["categories"][category][library]["functions"][function]["returns"][0]:
                         block["output"] = "Number"
-                    elif data["categories"][category][library]["functions"][function]["returns"][0] == "string":
+                    elif "string" in data["categories"][category][library]["functions"][function]["returns"][0]:
                         block["output"] = "String"
+                    elif "boolean" in data["categories"][category][library]["functions"][function]["returns"][0]:
+                        block["output"] = "Boolean"
+                    elif "table" in data["categories"][category][library]["functions"][function]["returns"][0]:
+                        block["output"] = "Array"
+                    elif data["categories"][category][library]["functions"][function]["returns"][0] == "optional/multiple":
+                        block["output"] = "Array"
+                        block["$tablize"] = True
+                    elif "{" in data["categories"][category][library]["functions"][function]["returns"][0] and "}" in data["categories"][category][library]["functions"][function]["returns"][0]:
+                        block["output"] = "Array"
+                    else:
+                        block["output"] = "Array" # Some unknown object that can be represented as Table
+                elif len(data["categories"][category][library]["functions"][function]["returns"]) > 1:
+                    block["output"] = "Array"
+                    block["$tablize"] = True
                 else:
                     block["previousStatement"] = None
                     block["nextStatement"] = None

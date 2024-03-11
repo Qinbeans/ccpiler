@@ -144,8 +144,8 @@ for (const categoryKey in FUNCTIONS) {
                 if (args > 0)
                     code = code.slice(0, -2)
                 code += ")"
-                // if ouput is Array, then wrap in {}
-                if (blockData.output == "Array") {
+                // if blockData contains "$tablize", then we need to wrap the code in a table
+                if (blockData["$tablize"]) {
                     return ["{"+code+"}", Order.ATOMIC]
                 }
                 if (blockData.output) {
