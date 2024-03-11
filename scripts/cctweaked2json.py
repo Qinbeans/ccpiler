@@ -69,7 +69,7 @@ def extract_functions(soup: bs4.BeautifulSoup, category: str, library: str):
         returns = []
 
         param = dd.find("ol", class_="parameter-list")
-        ret = dd.find("ol", class_="return-list")
+        rets = dd.find_all("ol", class_="return-list")
 
         if param:
             lis = param.find_all("li")
@@ -93,8 +93,15 @@ def extract_functions(soup: bs4.BeautifulSoup, category: str, library: str):
                     parameters.append({"name": p_name[0:-1], "type": p_type, "optional": True})
                 else:
                     parameters.append({"name": p_name, "type": p_type})
-        if ret:
-            lis = ret.find_all("li")
+        if len(rets) > 1:
+            # place 2 dummy values to indicate that this function returns an array
+            returns.append("array")
+            returns.append("array")
+        elif len(rets) > 0:
+            # if rets[0] contains { and } then it's a table to which we set returns to multiple "arrays"
+            if "{" in rets[0].text and "}" in rets[0].text:
+                returns.append("array")
+            lis = rets[0].find_all("li")
             for li in lis:
                 _type = li.find("span", class_="type")
                 if _type:
@@ -108,8 +115,11 @@ def test_extract_functions():
     with open("tests/test2.html") as f:
         soup = bs4.BeautifulSoup(f, "html.parser")
         extract_functions(soup, "Globals", "textutils")
+    with open("tests/test3.html") as f:
+        soup = bs4.BeautifulSoup(f, "html.parser")
+        extract_functions(soup, "Globals", "turtle")
 
-def data_to_blockly(pretty: bool = False):
+def data_to_blockly(pretty: bool = False, output: str = "blockly.json"):
     blockly = {}
     for category in data["categories"]:
         blockly[category] = {}
@@ -133,26 +143,27 @@ def data_to_blockly(pretty: bool = False):
                         block[f"args{i+1}"] = [{"type": "input_value", "name": parameter["name"], "check": "String"}]
                     else:
                         block[f"args{i+1}"] = [{"type": "input_value", "name": parameter["name"]}]
-                for i, ret in enumerate(data["categories"][category][library]["functions"][function]["returns"]):
-                    if "number" in ret:
+                if len(data["categories"][category][library]["functions"][function]["returns"]) > 1:
+                    block["output"] = "Array"
+                elif len(data["categories"][category][library]["functions"][function]["returns"]) == 1:
+                    if data["categories"][category][library]["functions"][function]["returns"][0] == "number":
                         block["output"] = "Number"
-                    elif "string" in ret:
+                    elif data["categories"][category][library]["functions"][function]["returns"][0] == "string":
                         block["output"] = "String"
-                    else:
-                        block["output"] = "Any"
-                block["previousStatement"] = None
-                block["nextStatement"] = None
+                else:
+                    block["previousStatement"] = None
+                    block["nextStatement"] = None
                 blockly[category][library].append(block)
-    with open("blockly.json", "w") as f:
+    with open(output, "w") as f:
         if pretty:
             json.dump(blockly, f, indent=4)
         else:
             json.dump(blockly, f)
 
-def test_data_to_blockly(pretty: bool = False):
-    data_to_blockly(pretty)
+def test_data_to_blockly(pretty: bool = False, output: str = "blockly.json"):
+    data_to_blockly(pretty, output)
 
-def main(categories: list = [], pretty: bool = False):
+def main(categories: list = [], pretty: bool = False, output: str = "blockly.json"):
     request = requests.get(CCTWEAK_URL)
     soup = bs4.BeautifulSoup(request.text, "html.parser")
     extract_navbar(soup)
@@ -173,11 +184,11 @@ def main(categories: list = [], pretty: bool = False):
             extract_functions(soup, category, library)
             print(f"\t[{COLORS['GREEN']}Done{COLORS['CLEAR']}]")
         print(f"[{COLORS['GREEN']}Done{COLORS['CLEAR']}]")
-    data_to_blockly(pretty)
+    data_to_blockly(pretty, output)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Converts the ComputerCraft Tweaked documentation to a JSON file")
-    parser.add_argument("-o", "--output", help="The output file", default="cctweaked.json")
+    parser.add_argument("-o", "--output", help="The output file", default="blockly.json")
     parser.add_argument("-t", "--test", help="Run the tests", action="store_true")
     # which categories to extract
     parser.add_argument("-c", "--categories", help="The categories to extract", nargs="+", default=[])
@@ -189,11 +200,11 @@ if __name__ == "__main__":
     if args.test:
         test_extract_navbar()
         test_extract_functions()
-        test_data_to_blockly(args.pretty)
+        test_data_to_blockly(args.pretty, args.output)
     else:
-        main(args.categories, args.pretty)
+        main(args.categories, args.pretty, args.output)
     
-    with open(args.output, "w") as f:
+    with open("cc:tweaked.json", "w") as f:
         if args.pretty:
             json.dump(data, f, indent=4)
         else:

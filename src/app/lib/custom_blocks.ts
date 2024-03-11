@@ -1,63 +1,107 @@
-import Blocky from 'blockly'
+import Blockly from 'blockly'
 import { FUNCTIONS, TOOLBOX_CONFIG } from './consts'
 import { Order, luaGenerator } from 'blockly/lua'
+import { Category } from './types';
 
-luaGenerator.forBlock['dictionary'] = function(block: any, generator: any) {
-    const statementMembers = generator.statementToCode(block, 'ITEMS');
-    const code = '{\n' + statementMembers + '\n}';
-    return [code, Order.ATOMIC];
+luaGenerator.forBlock["create_list"] = function(block: any, generator: any) {
+    const list = generator.statementToCode(block, 'LIST')
+    return ["{"+list+"}", Order.ATOMIC]
 }
 
-Blocky.Blocks['dictionary'] = {
+luaGenerator.forBlock['pair'] = function(block: any, generator: any) {
+    const value = generator.valueToCode(
+        block, 'VALUE', Order.ATOMIC)
+    const key = generator.valueToCode(
+        block, 'KEY', Order.ATOMIC)
+    const code = `[${key}] = ${value}`
+    return code
+}
+
+luaGenerator.forBlock['get'] = function(block: any, generator: any) {
+    const list = generator.valueToCode(
+        block, 'LIST', Order.ATOMIC)
+    const index = generator.valueToCode(
+        block, 'INDEX', Order.ATOMIC)
+    return [`${list}[${index}]`, Order.ATOMIC]
+}
+
+const createListJson = {
+    "type": "create_list",
+    "message0": "create list %1",
+    "args0": [
+        {
+            "type": "input_statement",
+            "name": "LIST"
+        }
+    ],
+    "output": "Array",
+    "colour": 230
+}
+
+const pairJson = {
+    "type": "pair",
+    "message0": "pair %1 %2",
+    "args0": [
+        {
+            "type": "input_value",
+            "name": "KEY"
+        },
+        {
+            "type": "input_value",
+            "name": "VALUE"
+        }
+    ],
+    "previousStatement": null,
+    "nextStatement": null,
+    "colour": 230
+}
+
+const getJson = {
+    "type": "get",
+    "message0": "get %1 %2",
+    "args0": [
+        {
+            "type": "input_value",
+            "name": "LIST",
+            "check": "Array"
+        },
+        {
+            "type": "input_value",
+            "name": "INDEX",
+            "check": ["String", "Number"]
+        }
+    ],
+    "output": null,
+    "colour": 230
+}
+
+Blockly.Blocks['create_list'] = {
     init: function() {
-        this.appendDummyInput()
-            .appendField("Dictionary")
-        this.appendStatementInput("ITEMS")
-            .setCheck(null)
-            .appendField("Items")
-        this.setColour(160)
-        this.setTooltip("")
-        this.setHelpUrl("")
-        this.setOutput(true, null)
+        this.jsonInit(createListJson)
     }
 }
 
-luaGenerator['dictionary_member'] = function(block: any, generator: any) {
-    const name = generator.valueToCode(
-        block, 'MEMBER_NAME', Order.ATOMIC);
-    const value = generator.valueToCode(
-        block, 'MEMBER_VALUE', Order.ATOMIC);
-    const code = `[${name}] : ${value}`;
-    return code;
-};
-
-Blocky.Blocks['dictionary_member'] = {
+Blockly.Blocks['pair'] = {
     init: function() {
-        this.appendDummyInput()
-            .appendField("Member")
-        this.appendValueInput("MEMBER_NAME")
-            .setCheck(null)
-            .appendField("Name")
-        this.appendValueInput("MEMBER_VALUE")
-            .setCheck(null)
-            .appendField("Value")
-        this.setInputsInline(true)
-        this.setPreviousStatement(true, null)
-        this.setNextStatement(true, null)
-        this.setColour(160)
-        this.setTooltip("")
-        this.setHelpUrl("")
+        this.jsonInit(pairJson)
+    }
+}
+
+Blockly.Blocks['get'] = {
+    init: function() {
+        this.jsonInit(getJson)
     }
 }
 
 TOOLBOX_CONFIG.contents.push({
     "kind": "category",
-    "name": "Dictionary",
+    "name": "Lists",
+    "colour": '%{BKY_LISTS_HUE}',
     "contents": [
-        {"kind": "block", "type": "dictionary"},
-        {"kind": "block", "type": "dictionary_member"}
-    ],
-    "colour": 160
+        {"kind": "block", "type": "create_list"},
+        {"kind": "block", "type": "pair"},
+        {"kind": "block", "type": "get"}
+    ]
 })
 
 // FUNCTIONS is of type { [key: string]: any }
@@ -71,7 +115,7 @@ for (const categoryKey in FUNCTIONS) {
         if (libraryData.length == 0) continue
         for (const blockData of libraryData) {
             if (!blockData) continue
-            Blocky.Blocks[blockData.tooltip] = {
+            Blockly.Blocks[blockData.tooltip] = {
                 init: function() {
                     try {
                         this.jsonInit(blockData)
@@ -100,6 +144,10 @@ for (const categoryKey in FUNCTIONS) {
                 if (args > 0)
                     code = code.slice(0, -2)
                 code += ")"
+                // if ouput is Array, then wrap in {}
+                if (blockData.output == "Array") {
+                    return ["{"+code+"}", Order.ATOMIC]
+                }
                 if (blockData.output) {
                     return [code, Order.ATOMIC]
                 }

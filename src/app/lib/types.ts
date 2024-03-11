@@ -24,7 +24,7 @@ export interface PageInfo {
 //     })[];
 // }
 
-type Category = {
+export type Category = {
     kind: string;
     name: string;
     colour: string | number;
@@ -32,7 +32,7 @@ type Category = {
     custom?: string;
 }
 
-type Block = {
+export type Block = {
     kind: string;
     type: string;
 }
