@@ -2,7 +2,7 @@
 
 It turns Blockly code into Lua meant for CC:Tweaked.
 
-<img src="https://raw.githubusercontent.com/Qinbeans/ccpiler/main/docs/void_dumby.png" alt="void_dumby" height="50%" width="50%">
+<img src="https://raw.githubusercontent.com/Qinbeans/ccpiler/main/docs/example.png" alt="void_dumby" height="50%" width="50%">
 
 Goal: To connect a CC:Tweaked computer or turtle to this website via websockets to edit code live.
 
