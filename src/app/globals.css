@@ -31,3 +31,7 @@ body {
         text-wrap: balance;
     }
 }
+
+input.blocklyHtmlInput {
+    @apply bg-white/0 text-black/25 font-light border-yellow-500 border-2 border-solid rounded-md py-1;
+}

@@ -18,14 +18,14 @@ export default function Workspace() {
         const code = luaGenerator.workspaceToCode(workspace)
         setLua(code)
     }
-    
+
     return (
         <div className="h-[98%] mt-3 text-black">
         <BlocklyWorkspace
         className="w-full h-[58%]"
         toolboxConfiguration={TOOLBOX_CONFIG}
         workspaceConfiguration={{
-            theme: DarkTheme,
+            theme: DarkTheme
         }}
         initialXml={initialXml}
         onXmlChange={setXml}

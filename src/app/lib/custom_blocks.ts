@@ -1,23 +1,32 @@
-import Blockly from 'blockly'
+import Blockly, { Block, CodeGenerator } from 'blockly'
 import { FUNCTIONS, TOOLBOX_CONFIG } from './consts'
 import { Order, luaGenerator } from 'blockly/lua'
-import { Category } from './types';
 
-luaGenerator.forBlock["create_list"] = function(block: any, generator: any) {
-    const list = generator.statementToCode(block, 'LIST')
+luaGenerator.forBlock["create_table"] = function(block: Block, generator: CodeGenerator) {
+    let list = ""
+    if (block.inputList.length == 0) return ["{}", Order.ATOMIC]
+    for (let i = 0; i < block.inputList.length; i++) {
+        const input = block.inputList[i]
+        if (!input.name.includes("ADD")) continue
+        const value = generator.valueToCode(
+            block, input.name, Order.ATOMIC)
+        if (value == "") continue
+        list += value+", "
+    }
+    list = list.slice(0, -2)
     return ["{"+list+"}", Order.ATOMIC]
 }
 
-luaGenerator.forBlock['pair'] = function(block: any, generator: any) {
+luaGenerator.forBlock['insert_pair'] = function(block: Block, generator: CodeGenerator) {
     const value = generator.valueToCode(
         block, 'VALUE', Order.ATOMIC)
     const key = generator.valueToCode(
         block, 'KEY', Order.ATOMIC)
     const code = `[${key}] = ${value}`
-    return code
+    return [code, Order.ATOMIC]
 }
 
-luaGenerator.forBlock['get'] = function(block: any, generator: any) {
+luaGenerator.forBlock['get'] = function(block: Block, generator: CodeGenerator) {
     const list = generator.valueToCode(
         block, 'LIST', Order.ATOMIC)
     const index = generator.valueToCode(
@@ -25,23 +34,47 @@ luaGenerator.forBlock['get'] = function(block: any, generator: any) {
     return [`${list}[${index}]`, Order.ATOMIC]
 }
 
-const createListJson = {
-    "type": "create_list",
-    "message0": "create list %1",
+luaGenerator.forBlock['length'] = function(block: Block, generator: CodeGenerator) {
+    const list = generator.valueToCode(
+        block, 'LIST', Order.ATOMIC)
+    return [`#${list}`, Order.ATOMIC]
+}
+
+luaGenerator.forBlock['length_pair'] = function(block: Block, generator: CodeGenerator) {
+    const list = generator.valueToCode(
+        block, 'LIST', Order.ATOMIC)
+    return [`(function() local count = 0 for _ in pairs(${list}) do count = count + 1 end return count end)()`, Order.ATOMIC]
+}
+
+luaGenerator.forBlock['for_pairs'] = function(block: Block, generator: CodeGenerator) {
+    const list = generator.valueToCode(
+        block, 'LIST', Order.ATOMIC)
+    const key = generator.getVariableName(block.getFieldValue('KEY'))
+    const value = generator.getVariableName(block.getFieldValue('VALUE'))
+    const innerCode = generator.statementToCode(block, 'DO')
+    const code = `for ${key}, ${value} in pairs(${list}) do\n${innerCode}end\n`
+    return code
+}
+
+// dynamically add input_values to the create_table block every time a new input is added
+const createTableJson = {
+    "type": "create_table",
+    "message0": "create table %1",
     "args0": [
         {
-            "type": "input_statement",
-            "name": "LIST"
+            "type": "input_value",
+            "name": "ADD0"
         }
     ],
     "output": "Array",
     "colour": 230
 }
 
-const pairJson = {
-    "type": "pair",
-    "message0": "pair %1 %2",
-    "args0": [
+const insertPairJson = {
+    "type": "insert_pair",
+    "message0": "insert pair",
+    "message1": "key:%1 value:%2",
+    "args1": [
         {
             "type": "input_value",
             "name": "KEY"
@@ -51,14 +84,15 @@ const pairJson = {
             "name": "VALUE"
         }
     ],
-    "previousStatement": null,
-    "nextStatement": null,
+    "output": "",
+    "inputsInline": true,
     "colour": 230
 }
 
+
 const getJson = {
     "type": "get",
-    "message0": "get %1 %2",
+    "message0": "get %2 from %1",
     "args0": [
         {
             "type": "input_value",
@@ -71,19 +105,110 @@ const getJson = {
             "check": ["String", "Number"]
         }
     ],
+    "inputsInline": true,
     "output": null,
     "colour": 230
 }
 
-Blockly.Blocks['create_list'] = {
-    init: function() {
-        this.jsonInit(createListJson)
-    }
+const lengthJson = {
+    "type": "length",
+    "message0": "length %1",
+    "args0": [
+        {
+            "type": "input_value",
+            "name": "LIST",
+            "check": "Array"
+        }
+    ],
+    "output": "Number",
+    "colour": 230
 }
 
-Blockly.Blocks['pair'] = {
+const lengthPairJson = {
+    "type": "length_pair",
+    "message0": "length pair %1",
+    "args0": [
+        {
+            "type": "input_value",
+            "name": "LIST",
+            "check": "Array"
+        }
+    ],
+    "output": "Number",
+    "colour": 230
+}
+
+const forPairsJson = {
+    "type": "for_pairs",
+    "message0": "for (key: %1, value: %2) in %3",
+    "args0": [{
+            "type": "field_variable",
+            "name": "KEY",
+            "variable": "key"
+        },
+        {
+            "type": "field_variable",
+            "name": "VALUE",
+            "variable": "value"
+        },
+        {
+            "type": "input_value",
+            "name": "LIST",
+            "check": "Array"
+        }
+    ],
+    // inner blocks
+    "message1": "do %1",
+    "args1": [{
+        "type": "input_statement",
+        "name": "DO"
+    }],
+    "previousStatement": null,
+    "nextStatement": null,
+    "colour": 230
+}
+
+Blockly.Blocks['create_table'] = {
     init: function() {
-        this.jsonInit(pairJson)
+        this.jsonInit(createTableJson);
+    },
+    saveExtraState: function() {
+        this.itemCount_ = this.inputList.length;
+        if (this.childBlocks_.length == this.itemCount_) {
+            // increase the count of inputs
+            this.appendValueInput('ADD'+this.itemCount_)
+        } else if (this.childBlocks_.length + 2 == this.itemCount_) {
+            // 2 extra inputs means one must be removed
+            this.removeInput('ADD'+(this.itemCount_-1))
+        }
+    },
+}
+
+Blockly.Blocks['create_table_container'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Items");
+        this.appendStatementInput('STACK')
+            .setCheck('create_table_item');
+        this.setColour(230);
+        this.setTooltip("Add items to the table.");
+    }
+};
+
+Blockly.Blocks['create_table_item'] = {
+    init: function() {
+        this.appendDummyInput()
+            .appendField("Item");
+        this.setPreviousStatement(true, 'create_table_item');
+        this.setNextStatement(true, 'create_table_item');
+        this.setColour(230);
+        this.setTooltip("Represents a single item in the table.");
+    }
+};
+
+Blockly.Blocks['insert_pair'] = {
+    init: function() {
+        this.jsonInit(insertPairJson)
     }
 }
 
@@ -93,14 +218,35 @@ Blockly.Blocks['get'] = {
     }
 }
 
+Blockly.Blocks['length'] = {
+    init: function() {
+        this.jsonInit(lengthJson)
+    }
+}
+
+Blockly.Blocks['length_pair'] = {
+    init: function() {
+        this.jsonInit(lengthPairJson)
+    }
+}
+
+Blockly.Blocks['for_pairs'] = {
+    init: function() {
+        this.jsonInit(forPairsJson)
+    }
+}
+
 TOOLBOX_CONFIG.contents.push({
     "kind": "category",
-    "name": "Lists",
+    "name": "Tables",
     "colour": '%{BKY_LISTS_HUE}',
     "contents": [
-        {"kind": "block", "type": "create_list"},
-        {"kind": "block", "type": "pair"},
-        {"kind": "block", "type": "get"}
+        {"kind": "block", "type": "create_table"},
+        {"kind": "block", "type": "insert_pair"},
+        {"kind": "block", "type": "get"},
+        {"kind": "block", "type": "length"},
+        {"kind": "block", "type": "length_pair"},
+        {"kind": "block", "type": "for_pairs"}
     ]
 })
 
@@ -124,7 +270,7 @@ for (const categoryKey in FUNCTIONS) {
                     }
                 }
             }
-            luaGenerator.forBlock[blockData.tooltip] = function(block: any, generator: any) {
+            luaGenerator.forBlock[blockData.tooltip] = function(block: Block, generator: CodeGenerator) {
                 const name = blockData.tooltip
                 let code = name+"("
                 let args = 0
@@ -137,7 +283,7 @@ for (const categoryKey in FUNCTIONS) {
                         code += "(function()\n"+value+"end), "
                         continue
                     }
-                    const value = generator.valueToCode(block, arg.name, generator.ORDER_NONE)
+                    const value = generator.valueToCode(block, arg.name, Order.NONE)
                     code += value+", "
                     args++
                 }
@@ -151,7 +297,7 @@ for (const categoryKey in FUNCTIONS) {
                 if (blockData.output) {
                     return [code, Order.ATOMIC]
                 }
-                return code
+                return code+"\n"
             }
             blocks.push({"kind": "block", "type": blockData.tooltip})
             lastColor = blockData.colour

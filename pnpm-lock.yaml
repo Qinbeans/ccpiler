@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@blockly/block-dynamic-connection':
+    specifier: ^0.6.0
+    version: 0.6.0(blockly@10.4.2)
   '@blockly/theme-dark':
     specifier: ^6.0.5
     version: 6.0.5(blockly@10.4.2)
@@ -74,6 +77,15 @@ packages:
     dependencies:
       regenerator-runtime: 0.14.1
     dev: true
+
+  /@blockly/block-dynamic-connection@0.6.0(blockly@10.4.2):
+    resolution: {integrity: sha512-em8xktulfSsn6G3KtIQSlwXTO8a0Z66HjP+c/crgL1ve6wnZCWsaKfyl8f2RCrIJsGbcfND0HVt5D5MZkeZxAw==}
+    engines: {node: '>=8.17.0'}
+    peerDependencies:
+      blockly: ^10.4.1
+    dependencies:
+      blockly: 10.4.2
+    dev: false
 
   /@blockly/theme-dark@6.0.5(blockly@10.4.2):
     resolution: {integrity: sha512-6vftqOY4ZfwqiAUh2lR12TL16t+7UcmiGVYOBSs4dj1emP89UEO7EMaj0RQ+m0BsV9IHsf2fN6iKZu1gWkmnnA==}

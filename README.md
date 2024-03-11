@@ -2,6 +2,8 @@
 
 It turns Blockly code into Lua meant for CC:Tweaked.
 
+<img src="https://raw.githubusercontent.com/Qinbeans/ccpiler/main/docs/void_dumby.png" alt="void_dumby" height="50%" width="50%">
+
 Goal: To connect a CC:Tweaked computer or turtle to this website via websockets to edit code live.
 
 ## Scrape CC:Tweaked
@@ -26,7 +28,7 @@ Run `python ./scripts/cctweaked2json.py -c Globals -o src/app/lib/blockly.json` 
 
 CC:Tweaked has a few quirks that need to be worked around, but it's no problem of Lua or CC:Tweaked, it's just the way Blockly works. Lua allows for multiple return values, but Blockly only allows for one. So to get around this, this assumes you want to use all values and puts them into a table.
 
-<img src="https://raw.githubusercontent.com/Qinbeans/ccpiler/main/docs/multiple_returns.png" alt="script_run" height="25%" width="25%">
+<img src="https://raw.githubusercontent.com/Qinbeans/ccpiler/main/docs/multiple_returns.png" alt="script_run" height="45%" width="45%">
 
 As you can see `turtle.craft` creates `{turtle.craft()}`.
 
