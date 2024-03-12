@@ -1,6 +1,6 @@
 # A Next.js tool for writing CC:Tweaked code *visually*
 
-It turns Blockly code into Lua meant for CC:Tweaked.
+It turns Blockly code into Lua meant for [CC:Tweaked](https://tweaked.cc/).
 
 <img src="https://raw.githubusercontent.com/Qinbeans/ccpiler/main/docs/example.png" alt="void_dumby" height="50%" width="50%">
 
@@ -40,3 +40,4 @@ This does make the Lua harder to read to a degree, but the hope is that the Bloc
 
 ## Credits
 Inspired by [ccblockly](https://github.com/Mirka1405/ccblockly)
+Source [CC:Tweaked](https://tweaked.cc/)
