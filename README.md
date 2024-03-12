@@ -39,5 +39,7 @@ Here's a quirk that was introduced by no fault but my own. I find it more precis
 This does make the Lua harder to read to a degree, but the hope is that the Blockly code is easier to read and understand.
 
 ## Credits
+
 Inspired by [ccblockly](https://github.com/Mirka1405/ccblockly)
+
 Source [CC:Tweaked](https://tweaked.cc/)
