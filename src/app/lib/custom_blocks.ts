@@ -1,4 +1,4 @@
-import Blockly, { Block, CodeGenerator } from 'blockly'
+import Blockly, { Block, CodeGenerator, inputTypes } from 'blockly'
 import { FUNCTIONS, TOOLBOX_CONFIG } from './consts'
 import { Order, luaGenerator } from 'blockly/lua'
 
@@ -89,7 +89,6 @@ const insertPairJson = {
     "colour": 230
 }
 
-
 const getJson = {
     "type": "get",
     "message0": "get %2 from %1",
@@ -173,7 +172,7 @@ Blockly.Blocks['create_table'] = {
         this.jsonInit(createTableJson);
     },
     saveExtraState: function() {
-        this.itemCount_ = this.inputList.length;
+        this.itemCount_ = this.inputList.length
         if (this.childBlocks_.length == this.itemCount_) {
             // increase the count of inputs
             this.appendValueInput('ADD'+this.itemCount_)
@@ -250,6 +249,7 @@ TOOLBOX_CONFIG.contents.push({
     ]
 })
 
+
 // FUNCTIONS is of type { [key: string]: any }
 for (const categoryKey in FUNCTIONS) {
     let lastColor = 0
@@ -268,27 +268,82 @@ for (const categoryKey in FUNCTIONS) {
                     } catch (e) {
                         console.error(e, blockData)
                     }
+                },
+                saveExtraState: function() {
+                    this.multiCount_ = 0
+                    this.childCount_ = 0
+                    for (const input of this.inputList) {
+                        const arg = input.name
+                        if (arg.slice(0,3) == "...") {
+                            this.multiCount_++
+                            if (input.connection.targetConnection) {
+                                this.childCount_++
+                            }
+                            continue
+                        }
+                        // if block is present
+                    }
+                    for (const input of this.inputList) {
+                        if (input.name == "...") {
+                            if (this.childCount_ == this.multiCount_) {
+                                // increase the count of inputs
+                                this.appendValueInput('...'+this.childCount_)
+                            } else if (this.childCount_ + 2 == this.multiCount_) {
+                                this.removeInput('...'+(this.childCount_-1))
+                            }
+                        
+                        }
+                    }
+                },
+                onchange: function() {
+                    for (const input of this.inputList) {
+                        if (input.connection && input.connection.targetConnection) {
+                            for (const field of input.fieldRow) {
+                                if (field.name) {
+                                    if (Blockly.getMainWorkspace().getVariable(field.name, field.variableType)) {
+                                        continue
+                                    }
+                                    Blockly.getMainWorkspace().createVariable(field.name, field.variableType)
+                                }
+                            }
+                        } 
+                    }
+                },
+                onDestroy: function() {
+                    for (const input of this.inputList) {
+                        for (const field of input.fieldRow) {
+                            if (field.name) {
+                                Blockly.getMainWorkspace().deleteVariableById(field.id_)
+                            }
+                        }
+                    }
                 }
             }
             luaGenerator.forBlock[blockData.tooltip] = function(block: Block, generator: CodeGenerator) {
                 const name = blockData.tooltip
                 let code = name+"("
-                let args = 0
-                for (const el in blockData) {
-                    if (el.search("arg") == -1) continue
-                    const arg = blockData[el][0]
-                    if (arg.type == "input_statement") {
-                        const value = generator.statementToCode(block, arg.name)
-                        // lambda function
-                        code += "(function()\n"+value+"end), "
+                for (let i = 0; i < block.inputList.length; i++) {
+                    const input = block.inputList[i]
+                    //check if input is input_statement
+                    if (input.type == inputTypes.STATEMENT) {
+                        // get fields in input
+                        let fields = ""
+                        for (const field of input.fieldRow) {
+                            if (field.name) {
+                                fields += field.name + ", "
+                            }
+                        }
+                        fields = fields.slice(0, -2)
+                        const value = generator.statementToCode(block, input.name)
+                        code += `(function(${fields})\n${value}end), `
+                        continue
+                    } else if (input.type == inputTypes.DUMMY) {
                         continue
                     }
-                    const value = generator.valueToCode(block, arg.name, Order.NONE)
+                    const value = generator.valueToCode(block, input.name, Order.NONE)
                     code += value+", "
-                    args++
                 }
-                if (args > 0)
-                    code = code.slice(0, -2)
+                while(code.slice(-2) == ", ") code = code.slice(0, -2)
                 code += ")"
                 // if blockData contains "$tablize", then we need to wrap the code in a table
                 if (blockData["$tablize"]) {

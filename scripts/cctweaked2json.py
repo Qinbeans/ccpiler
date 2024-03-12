@@ -81,8 +81,12 @@ def extract_functions(soup: bs4.BeautifulSoup, category: str, library: str):
                 optional = li.find("span", class_="optional")
                 p_type = li.find("span", class_="type")
                 if p_type:
-                    if "{" in p_type.text and "}" in p_type.text:
+                    if "{" in p_type.text and "}" in p_type.text or "| table" in p_type.text:
                         p_type = "dict"
+                    elif "| string" in p_type.text:
+                        p_type = "string"
+                    elif "| number" in p_type.text:
+                        p_type = "number"
                     else:
                         p_type = p_type.text
                 else:
@@ -114,6 +118,9 @@ def test_extract_functions():
     with open("tests/test3.html") as f:
         soup = bs4.BeautifulSoup(f, "html.parser")
         extract_functions(soup, "Globals", "turtle")
+    with open("tests/test4.html") as f:
+        soup = bs4.BeautifulSoup(f, "html.parser")
+        extract_functions(soup, "Globals", "peripheral")
 
 def data_to_blockly(pretty: bool = False, output: str = "blockly.json"):
     blockly = {}
@@ -132,13 +139,40 @@ def data_to_blockly(pretty: bool = False, output: str = "blockly.json"):
                 for i, parameter in enumerate(data["categories"][category][library]["functions"][function]["parameters"]):
                     block[f"message{i+1}"] = f"{parameter['name']}: {parameter['type']}, %1"
                     if "function" in parameter["type"]:
-                        block[f"args{i+1}"] = [{"type": "input_statement", "name": parameter["name"]}]
+                        block[f"message{i+1}"] = f"{parameter['name']}: function("
+                        # break the function block
+                        fn_split = ":".join(parameter["type"][8:].split(":")[0:-1])
+                        fn_params = fn_split[1:-1].split(", ")
+                        block[f"args{i+1}"] = []
+                        arg_num = 1
+                        for fn_param in fn_params:
+                            fn_split2 = fn_param.split(": ")
+                            fn_name = fn_split2[0]
+                            fn_type = fn_split2[1]
+                            print(f"[{COLORS['BLUE']}INFO{COLORS['CLEAR']}]: {fn_name} -> {fn_type}")
+                            if fn_type == "any":
+                                block[f"args{i+1}"].append({"type": "field_variable", "name": fn_name, "variable": fn_name})
+                            else:
+                                if "number" in fn_type:
+                                    fn_type = "Number"
+                                elif "string" in fn_type:
+                                    fn_type = "String"
+                                elif "boolean" in fn_type:
+                                    fn_type = "Boolean"
+                                elif "table" in fn_type:
+                                    fn_type = "Array"
+                                block[f"args{i+1}"].append({"type": "field_variable", "name": fn_name, "variable": fn_name, "variableTypes": [fn_type], "defaultType": fn_type})
+                            block[f"message{i+1}"] += f"%{arg_num}, "
+                            arg_num += 1
+                        block[f"message{i+1}"] = block[f"message{i+1}"][0:-2] + f") %{arg_num}"
+                        block[f"args{i+1}"].append({"type": "input_statement", "name": parameter["name"]})
                     elif "number" in parameter["type"]:
                         block[f"args{i+1}"] = [{"type": "input_value", "name": parameter["name"], "check": "Number"}]
                     elif "string" in parameter["type"]:
                         block[f"args{i+1}"] = [{"type": "input_value", "name": parameter["name"], "check": "String"}]
                     else:
                         block[f"args{i+1}"] = [{"type": "input_value", "name": parameter["name"]}]
+                    i += 1
                 if len(data["categories"][category][library]["functions"][function]["returns"]) == 1:
                     if "number" in data["categories"][category][library]["functions"][function]["returns"][0]:
                         block["output"] = "Number"
